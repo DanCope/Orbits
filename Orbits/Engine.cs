@@ -12,7 +12,7 @@ namespace Orbits
     /// </summary>
     public class Engine : Game
     {
-        public static int SCALE = 25000; //1 = 25,000m
+        public static int SCALE = 2500000; //1 = 25,000m
         public static int SPEED = 100; 
 
         GraphicsDeviceManager graphics;
@@ -21,8 +21,9 @@ namespace Orbits
 
         private Texture2D background;
 
-        Body Earth = new Body { Name = "Earth", Position = new Vector2(0, 0), Mass = 5.972e24F, Velocity = new Vector2(0, 0)};
-        Body Shuttle = new Body { Name = "Shuttle", Position = new Vector2(0, 6771000), Mass = 2000, Velocity = new Vector2(8500, 0) };
+        public Body Earth = new Body("Earth", 5.972e24F, 6371000);
+        //public Body SpaceStation = new Body("Space Station", 2000, 5, null, new Vector2(0, 6.771e7F), new Vector2(8500, 0));
+        public Body Moon = new Body("Moon", 7.35e22F, 362600000, null, new Vector2(0, 376671000), new Vector2(1022, 0));
 
         public Engine()
         {
@@ -42,6 +43,8 @@ namespace Orbits
             graphics.PreferredBackBufferWidth = 1024;  // set this value to the desired width of your window
             graphics.PreferredBackBufferHeight = 768;   // set this value to the desired height of your window
             graphics.ApplyChanges();
+
+            Moon.Parent = Earth;
 
             base.Initialize();
         }
@@ -82,15 +85,7 @@ namespace Orbits
 
             var dT = (float)gameTime.ElapsedGameTime.TotalSeconds * SPEED;
 
-            // Orbit logic
-            Shuttle.Velocity += Shuttle.Acceleration * (dT / 2);
-            Shuttle.Position += Shuttle.Velocity * dT;
-
-            //Force should be determined against all bodies and result in a total net force
-            var force = Shuttle.Force(Earth);
-            Shuttle.Acceleration = force / Shuttle.Mass;
-
-            Shuttle.Velocity += Shuttle.Acceleration * (dT / 2);
+            Moon.Step(dT);
 
             //var test = new Conic(new Vector3(5052.4587f, 1056.2713f, 5011.6366f), new Vector3(3.8589872f, 4.2763114f, -4.8070493f), Earth);
 
@@ -103,7 +98,12 @@ namespace Orbits
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            var conic = new Conic(Shuttle.Position, Shuttle.Velocity, Earth);
+            var conic = new Conic(Moon.Position, Moon.Velocity, Earth);
+
+            //Test
+            Vector3 r, v;
+            var dT = (float)gameTime.ElapsedGameTime.TotalSeconds * SPEED;
+            conic.ToCartesian(dT, out r, out v);
 
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
@@ -117,8 +117,8 @@ namespace Orbits
 
             drawBatch.DrawEllipse(new Pen(new SolidColorBrush(Color.Red)), DrawPos(Earth.Position - new Vector2(conic.FociToCenter * (float)Math.Cos(conic.ArgumentOfPeriapsis), conic.FociToCenter * (float)Math.Sin(conic.ArgumentOfPeriapsis))), conic.SemiMajorAxis / Engine.SCALE, conic.SemiMinorAxis / Engine.SCALE, conic.ArgumentOfPeriapsis);
 
-            drawBatch.FillCircle(new SolidColorBrush(Color.SkyBlue), DrawPos(Earth.Position), 6371000 / Engine.SCALE);
-            drawBatch.FillCircle(new SolidColorBrush(Color.WhiteSmoke), DrawPos(Shuttle.Position), 5);
+            drawBatch.FillCircle(new SolidColorBrush(Color.DeepSkyBlue), DrawPos(Earth.Position), 6371000 / Engine.SCALE);
+            drawBatch.FillCircle(new SolidColorBrush(Color.WhiteSmoke), DrawPos(Moon.Position), Math.Max(1737000 / Engine.SCALE, 1));
 
             
             drawBatch.End();
