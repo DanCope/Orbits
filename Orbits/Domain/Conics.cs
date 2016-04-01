@@ -12,20 +12,20 @@ namespace Orbits.Domain
         public Body PrimeFocus { get; protected set; }
 
         //Orbital Elements
-        public float SemiMajorAxis { get; protected set; }
-        public float Eccentricity { get; protected set; }
-        public float ArgumentOfPeriapsis { get; protected set; }
-        public float LongitudeOfAscendingNode { get; protected set; }
-        public float Inclination { get; protected set; }
-        public float MeanAnomaly { get; protected set; }
+        public double SemiMajorAxis { get; protected set; }
+        public double Eccentricity { get; protected set; }
+        public double ArgumentOfPeriapsis { get; protected set; }
+        public double LongitudeOfAscendingNode { get; protected set; }
+        public double Inclination { get; protected set; }
+        public double MeanAnomaly { get; protected set; }
 
         //Extras
-        public float SemiMinorAxis { get { return SemiMajorAxis * (float)Math.Sqrt(1 - Math.Pow(Eccentricity, 2)); }  }
-        public float FociToCenter { get { return (float)Math.Sqrt(Math.Pow(SemiMajorAxis, 2) - Math.Pow(SemiMinorAxis, 2)); } }
-        public float Periapsis { get { return SemiMajorAxis * (1 - Eccentricity); } }
-        public float Apoapsis { get { return SemiMajorAxis * (1 + Eccentricity); } }
-        public float Period { get { return (float)(2 * Math.PI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / PrimeFocus.GM)); } }
-        public float SphereOfInfluence {  get { return PrimeFocus.Parent != null ? SemiMajorAxis * (float)Math.Pow(PrimeFocus.Mass / PrimeFocus.Parent.Mass, 0.4) : float.PositiveInfinity; } }
+        public double SemiMinorAxis { get { return SemiMajorAxis * (float)Math.Sqrt(1 - Math.Pow(Eccentricity, 2)); } }
+        public double FociToCenter { get { return (float)Math.Sqrt(Math.Pow(SemiMajorAxis, 2) - Math.Pow(SemiMinorAxis, 2)); } }
+        public double Periapsis { get { return SemiMajorAxis * (1 - Eccentricity); } }
+        public double Apoapsis { get { return SemiMajorAxis * (1 + Eccentricity); } }
+        public double Period { get { return (float)(2 * Math.PI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / PrimeFocus.GM)); } }
+        public double SphereOfInfluence { get { return PrimeFocus.Parent != null ? SemiMajorAxis * (float)Math.Pow(PrimeFocus.Mass / PrimeFocus.Parent.Mass, 0.4) : float.PositiveInfinity; } }
 
         public Conic(float SemiMajorAxis, float Eccentricity, float ArgumentOfPeriapsis, float LongitudeOfAscendingNode, float Inclination, float MeanAnomaly, Body focus)
         {
@@ -69,19 +69,20 @@ namespace Orbits.Domain
 
             Eccentricity = e.Length();
 
-            ArgumentOfPeriapsis = (float)(e.Z >= 0 ? Math.Acos(Vector3.Dot(e, n) / (e.Length() * n.Length())) : 2 * Math.PI - Math.Acos(Vector3.Dot(e, n) / (e.Length() * n.Length())));
-            if (float.IsNaN(ArgumentOfPeriapsis)) ArgumentOfPeriapsis = (float)(n.Z >= 0 ? Math.Atan2(e.Y, e.X) : 2 * Math.PI - Math.Atan2(e.Y, e.X));
-            
-            LongitudeOfAscendingNode = (float)(n.Y >= 0 ? Math.Acos(n.X / n.Length()) : 2 * Math.PI - Math.Acos(n.X / n.Length()));
-            if (float.IsNaN(LongitudeOfAscendingNode)) LongitudeOfAscendingNode = 0f;
+            ArgumentOfPeriapsis = (e.Z >= 0 ? Math.Acos(Vector3.Dot(e, n) / (e.Length() * n.Length())) : 2 * Math.PI - Math.Acos(Vector3.Dot(e, n) / (e.Length() * n.Length())));
+            if (double.IsNaN(ArgumentOfPeriapsis)) ArgumentOfPeriapsis = (n.Z >= 0 ? Math.Atan2(e.Y, e.X) : 2 * Math.PI - Math.Atan2(e.Y, e.X));
 
-            Inclination = (float)Math.Acos(h.Z / h.Length());
+            LongitudeOfAscendingNode = (n.Y >= 0 ? Math.Acos(n.X / n.Length()) : 2 * Math.PI - Math.Acos(n.X / n.Length()));
+            if (double.IsNaN(LongitudeOfAscendingNode)) LongitudeOfAscendingNode = 0f;
+
+            Inclination = Math.Acos(h.Z / h.Length());
 
             //True anomaly
-            var V = (float)(Vector3.Dot(r, v) >= 0 ? Math.Acos(Vector3.Dot(e, r) / (e.Length() * r.Length())) : 2 * Math.PI - Math.Acos(Vector3.Dot(e, r) / (e.Length() * r.Length())));
+            var V = (Vector3.Dot(r, v) >= 0 ? Math.Acos(Vector3.Dot(e, r) / (e.Length() * r.Length())) : 2 * Math.PI - Math.Acos(Vector3.Dot(e, r) / (e.Length() * r.Length())));
             //Eccentric Anomaly
-            var E = (float)(2 * Math.Atan(Math.Tan(V / 2) / Math.Sqrt(((1 + Eccentricity) / (1 - Eccentricity)))));
-            MeanAnomaly = E - Eccentricity * (float)Math.Sin(E);            
+            var E = (2 * Math.Atan(Math.Tan(V / 2) / Math.Sqrt(((1 + Eccentricity) / (1 - Eccentricity)))));
+            MeanAnomaly = E - Eccentricity * Math.Sin(E);
+            MeanAnomaly = (MeanAnomaly + 2 * Math.PI) % (2 * Math.PI);
         }
 
         public void ToCartesian(float dT, out Vector3 r, out Vector3 v)
@@ -92,22 +93,34 @@ namespace Orbits.Domain
 
             //Ecccentric anomaly
             var E0 = Eccentricity > 0.8 ? Math.PI : MdT;
-            
+
             //Netwon-Raphson method
-            var FuncE = new Func<double,double>((Ej) => Ej - (Ej - Eccentricity * Math.Sin(Ej) - MdT) / (1 - Eccentricity * Math.Cos(Ej)));
+            var FuncE = new Func<double, double>((Ej) => Ej - (Ej - Eccentricity * Math.Sin(Ej) - MdT) / (1 - Eccentricity * Math.Cos(Ej)));
             var Edt = FuncE(E0);
+            Edt = FuncE(Edt);
 
             //True Anomaly
-            var VdT = 2 * Math.Atan2(Math.Sqrt(1 + Eccentricity) * Math.Sin(Edt / 2), Math.Sqrt(1 - Eccentricity) * Math.Cos(Edt / 2));
+            //var VdT = Math.Atan2(Math.Sqrt(1 - Math.Pow(Eccentricity, 2)) * Math.Sin(Edt), Math.Cos(Edt)-Eccentricity);
+
+            var VdT = 2 * Math.Atan2(Math.Sqrt(1.0 + Eccentricity) * Math.Sin(Edt / 2), Math.Sqrt(1 - Eccentricity) * Math.Cos(Edt / 2));
 
             //Distance to central body
             var rc = SemiMajorAxis * (1 - Eccentricity * Math.Cos(Edt));
 
             //Calc position
-            r = (float)rc * new Vector3((float)Math.Cos(VdT), (float)Math.Sin(VdT), 0);
+            var or = (float)rc * new Vector3((float)Math.Cos(VdT), (float)Math.Sin(VdT), 0);
 
             //Calc velocity
-            v = (float)(Math.Sqrt(PrimeFocus.GM * SemiMajorAxis) / rc) * new Vector3((float)-Math.Sin(Edt), (float)(Math.Sqrt(1 - Math.Pow(Eccentricity, 2)) * Math.Cos(Edt)), 0);
+            var ov = (float)(Math.Sqrt(PrimeFocus.GM * SemiMajorAxis) / rc) * new Vector3((float)-Math.Sin(Edt), (float)(Math.Sqrt(1 - Math.Pow(Eccentricity, 2)) * Math.Cos(Edt)), 0);
+
+
+            var f = new Func<Vector3, Vector3>(O => new Vector3(
+                   (float)(O.X * (Math.Cos(ArgumentOfPeriapsis) * Math.Cos(LongitudeOfAscendingNode) - Math.Sin(ArgumentOfPeriapsis) * Math.Cos(Inclination) * Math.Sin(LongitudeOfAscendingNode)) - O.Y * (Math.Sin(ArgumentOfPeriapsis) * Math.Cos(LongitudeOfAscendingNode) + Math.Cos(ArgumentOfPeriapsis) * Math.Cos(Inclination) * Math.Sin(LongitudeOfAscendingNode))),
+                   (float)(O.X * (Math.Cos(ArgumentOfPeriapsis) * Math.Sin(LongitudeOfAscendingNode) + Math.Sin(ArgumentOfPeriapsis) * Math.Cos(Inclination) * Math.Cos(LongitudeOfAscendingNode)) + O.Y * (Math.Cos(ArgumentOfPeriapsis) * Math.Cos(Inclination) * Math.Cos(LongitudeOfAscendingNode) - Math.Sin(ArgumentOfPeriapsis) * Math.Sin(LongitudeOfAscendingNode))),
+                   (float)(O.X * (Math.Sin(ArgumentOfPeriapsis) * Math.Sin(Inclination)) + O.Y * (Math.Cos(ArgumentOfPeriapsis) * Math.Sin(Inclination)))));
+
+            r = f(or);
+            v = f(ov);
 
             //r = v = new Vector3();
         }

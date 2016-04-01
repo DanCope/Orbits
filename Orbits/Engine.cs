@@ -13,7 +13,7 @@ namespace Orbits
     public class Engine : Game
     {
         public static int SCALE = 2500000; //1 = 25,000m
-        public static int SPEED = 100; 
+        public static int SPEED = 50000; 
 
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
@@ -23,7 +23,9 @@ namespace Orbits
 
         public Body Earth = new Body("Earth", 5.972e24F, 6371000);
         //public Body SpaceStation = new Body("Space Station", 2000, 5, null, new Vector2(0, 6.771e7F), new Vector2(8500, 0));
-        public Body Moon = new Body("Moon", 7.35e22F, 362600000, null, new Vector2(0, 376671000), new Vector2(1022, 0));
+        public Body Moon = new Body("Moon", 7.35e22F, 3626000, null, new Vector2(0, 376671000), new Vector2(500, -1.538058f));
+
+        public Conic MoonZero;
 
         public Engine()
         {
@@ -45,6 +47,7 @@ namespace Orbits
             graphics.ApplyChanges();
 
             Moon.Parent = Earth;
+            MoonZero = new Conic(Moon.Position, Moon.Velocity, Earth);
 
             base.Initialize();
         }
@@ -60,7 +63,7 @@ namespace Orbits
             drawBatch = new DrawBatch(GraphicsDevice);
 
             // TODO: use this.Content to load your game content here
-            background = Content.Load<Texture2D>("Images/stars");
+            //background = Content.Load<Texture2D>("Images/stars");
         }
 
         /// <summary>
@@ -87,7 +90,12 @@ namespace Orbits
 
             Moon.Step(dT);
 
-            //var test = new Conic(new Vector3(5052.4587f, 1056.2713f, 5011.6366f), new Vector3(3.8589872f, 4.2763114f, -4.8070493f), Earth);
+            //From http://www.castor2.ca/05_OD/01_Gauss/14_Kepler/index.html
+            //var test = new Conic(new Vector3(5052458.7f, 1056271.3f, 5011636.6f), new Vector3(3858.9872f, 4276.3114f, -4807.0493f), Earth);
+
+            //var test2 = new Conic(73108163f, 0.0159858f, 2.40429914663f, 3.68759754395f, 1.24002508663f, 6.1954373041f, Earth);
+            //Vector3 r, v;
+            //test2.ToCartesian(0, out r, out v);
 
             base.Update(gameTime);
         }
@@ -102,28 +110,47 @@ namespace Orbits
 
             //Test
             Vector3 r, v;
-            var dT = (float)gameTime.ElapsedGameTime.TotalSeconds * SPEED;
-            conic.ToCartesian(dT, out r, out v);
+            var dT = (float)gameTime.TotalGameTime.TotalSeconds * SPEED;
+            MoonZero.ToCartesian(dT, out r, out v);
 
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            //Need to figure out why it needs to be rotated
+            var mzr = RotateRadians(new Vector2(r.X, r.Y), Math.PI);
+            var mzv = RotateRadians(new Vector2(v.X, v.Y), Math.PI);
+            var moonZeroConic = new Conic(mzr, mzv, Earth);
+
+
+            GraphicsDevice.Clear(Color.Black);
 
             spriteBatch.Begin();
 
-            spriteBatch.Draw(background, new Rectangle(0, 0, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight), Color.White);
+            //spriteBatch.Draw(background, new Rectangle(0, 0, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight), Color.White);
 
             spriteBatch.End();
 
             drawBatch.Begin(DrawSortMode.Deferred);
 
-            drawBatch.DrawEllipse(new Pen(new SolidColorBrush(Color.Red)), DrawPos(Earth.Position - new Vector2(conic.FociToCenter * (float)Math.Cos(conic.ArgumentOfPeriapsis), conic.FociToCenter * (float)Math.Sin(conic.ArgumentOfPeriapsis))), conic.SemiMajorAxis / Engine.SCALE, conic.SemiMinorAxis / Engine.SCALE, conic.ArgumentOfPeriapsis);
+            drawBatch.DrawEllipse(new Pen(new SolidColorBrush(Color.Red)), DrawPos(Earth.Position - new Vector2((float)(conic.FociToCenter * Math.Cos(conic.ArgumentOfPeriapsis)), (float)(conic.FociToCenter * Math.Sin(conic.ArgumentOfPeriapsis)))), (float)conic.SemiMajorAxis / Engine.SCALE, (float)conic.SemiMinorAxis / Engine.SCALE, (float)conic.ArgumentOfPeriapsis);
+            drawBatch.DrawEllipse(new Pen(new SolidColorBrush(Color.Green)), 
+                DrawPos(Earth.Position - new Vector2((float)(moonZeroConic.FociToCenter * Math.Cos(moonZeroConic.ArgumentOfPeriapsis)), (float)(moonZeroConic.FociToCenter * Math.Sin(moonZeroConic.ArgumentOfPeriapsis)))),
+                (float)moonZeroConic.SemiMajorAxis / Engine.SCALE, 
+                (float)moonZeroConic.SemiMinorAxis / Engine.SCALE, 
+                (float)moonZeroConic.ArgumentOfPeriapsis);
 
-            drawBatch.FillCircle(new SolidColorBrush(Color.DeepSkyBlue), DrawPos(Earth.Position), 6371000 / Engine.SCALE);
-            drawBatch.FillCircle(new SolidColorBrush(Color.WhiteSmoke), DrawPos(Moon.Position), Math.Max(1737000 / Engine.SCALE, 1));
+            drawBatch.FillCircle(new SolidColorBrush(Color.DeepSkyBlue), DrawPos(Earth.Position), Earth.Radius / Engine.SCALE);
+            drawBatch.FillCircle(new SolidColorBrush(Color.WhiteSmoke), DrawPos(Moon.Position), Math.Max(Moon.Radius / Engine.SCALE, 1));
 
-            
+            drawBatch.FillCircle(new SolidColorBrush(Color.YellowGreen), DrawPos(mzr), Moon.Radius / Engine.SCALE);
+
             drawBatch.End();
 
             base.Draw(gameTime);
+        }
+
+        public Vector2 RotateRadians(Vector2 v, double radians)
+        {
+            var ca = Math.Cos(radians);
+            var sa = Math.Sin(radians);
+            return new Vector2((float)(ca * v.X - sa * v.Y), (float)(sa * v.X + ca * v.Y));
         }
 
         public Vector2 DrawPos(Vector2 Position)
