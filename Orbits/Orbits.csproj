@@ -42,7 +42,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Domain\Body.cs" />
-    <Compile Include="Domain\Conics.cs" />
+    <Compile Include="Domain\Conic.cs" />
+    <Compile Include="Domain\ConicBody.cs" />
     <Compile Include="Engine.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

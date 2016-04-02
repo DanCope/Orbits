@@ -16,7 +16,7 @@ namespace Orbits.Domain
         public float Radius { get; set; }
 
         public Body Parent { get; set; }
-
+        public virtual Conic Conic { get { return new Conic(Position, Velocity, Parent); } }
         public Vector2 Position { get; set; }
         public Vector2 Velocity { get; set; }
         public Vector2 Acceleration { get; private set; }
@@ -70,10 +70,10 @@ namespace Orbits.Domain
             return force * r / r.Length();
         }
 
-        public void Step(float dT)
+        public virtual void Step(float T, float dT)
         {
             //Using the LeapFrog algorithm
-            // Orbit logic
+            //Orbit logic
             Velocity += Acceleration * (dT / 2);
             Position += Velocity * dT;
 

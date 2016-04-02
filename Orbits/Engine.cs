@@ -12,8 +12,9 @@ namespace Orbits
     /// </summary>
     public class Engine : Game
     {
-        public static int SCALE = 2500000; //1 = 25,000m
-        public static int SPEED = 50000; 
+        public static int SCALE = 1500000;
+        public static int SPEED = 5000;
+        public static Vector2 DRAW_OFFSET;
 
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
@@ -22,8 +23,7 @@ namespace Orbits
         private Texture2D background;
 
         public Body Earth = new Body("Earth", 5.972e24F, 6371000);
-        //public Body SpaceStation = new Body("Space Station", 2000, 5, null, new Vector2(0, 6.771e7F), new Vector2(8500, 0));
-        public Body Moon = new Body("Moon", 7.35e22F, 3626000, null, new Vector2(0, 376671000), new Vector2(500, -1.538058f));
+        public Body Moon, MoonRedux;
 
         public Conic MoonZero;
 
@@ -46,8 +46,12 @@ namespace Orbits
             graphics.PreferredBackBufferHeight = 768;   // set this value to the desired height of your window
             graphics.ApplyChanges();
 
-            Moon.Parent = Earth;
-            MoonZero = new Conic(Moon.Position, Moon.Velocity, Earth);
+            DRAW_OFFSET = new Vector2(graphics.PreferredBackBufferWidth / 2, graphics.PreferredBackBufferHeight / 2);
+
+
+            //Moon = new Body("Moon", 7.35e22F, 3626000, Earth, new Vector2(r.X, r.Y), new Vector2(v.X, v.Y));
+            Moon = new Body("Moon", 7.35e22F, 3626000 * 1.4f, Earth, new Vector2(0, -376671000), new Vector2(500, 500));
+            MoonRedux = new ConicBody("Moon", 7.35e22F, 3626000, Earth, Moon.Conic);
 
             base.Initialize();
         }
@@ -87,15 +91,12 @@ namespace Orbits
                 Exit();
 
             var dT = (float)gameTime.ElapsedGameTime.TotalSeconds * SPEED;
+            var T = (float)gameTime.TotalGameTime.TotalSeconds * SPEED;
 
-            Moon.Step(dT);
+            Moon.Step(T, dT);
+            MoonRedux.Step(T, dT);
 
-            //From http://www.castor2.ca/05_OD/01_Gauss/14_Kepler/index.html
-            //var test = new Conic(new Vector3(5052458.7f, 1056271.3f, 5011636.6f), new Vector3(3858.9872f, 4276.3114f, -4807.0493f), Earth);
-
-            //var test2 = new Conic(73108163f, 0.0159858f, 2.40429914663f, 3.68759754395f, 1.24002508663f, 6.1954373041f, Earth);
-            //Vector3 r, v;
-            //test2.ToCartesian(0, out r, out v);
+            
 
             base.Update(gameTime);
         }
@@ -106,19 +107,6 @@ namespace Orbits
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            var conic = new Conic(Moon.Position, Moon.Velocity, Earth);
-
-            //Test
-            Vector3 r, v;
-            var dT = (float)gameTime.TotalGameTime.TotalSeconds * SPEED;
-            MoonZero.ToCartesian(dT, out r, out v);
-
-            //Need to figure out why it needs to be rotated
-            var mzr = RotateRadians(new Vector2(r.X, r.Y), Math.PI);
-            var mzv = RotateRadians(new Vector2(v.X, v.Y), Math.PI);
-            var moonZeroConic = new Conic(mzr, mzv, Earth);
-
-
             GraphicsDevice.Clear(Color.Black);
 
             spriteBatch.Begin();
@@ -129,17 +117,12 @@ namespace Orbits
 
             drawBatch.Begin(DrawSortMode.Deferred);
 
-            drawBatch.DrawEllipse(new Pen(new SolidColorBrush(Color.Red)), DrawPos(Earth.Position - new Vector2((float)(conic.FociToCenter * Math.Cos(conic.ArgumentOfPeriapsis)), (float)(conic.FociToCenter * Math.Sin(conic.ArgumentOfPeriapsis)))), (float)conic.SemiMajorAxis / Engine.SCALE, (float)conic.SemiMinorAxis / Engine.SCALE, (float)conic.ArgumentOfPeriapsis);
-            drawBatch.DrawEllipse(new Pen(new SolidColorBrush(Color.Green)), 
-                DrawPos(Earth.Position - new Vector2((float)(moonZeroConic.FociToCenter * Math.Cos(moonZeroConic.ArgumentOfPeriapsis)), (float)(moonZeroConic.FociToCenter * Math.Sin(moonZeroConic.ArgumentOfPeriapsis)))),
-                (float)moonZeroConic.SemiMajorAxis / Engine.SCALE, 
-                (float)moonZeroConic.SemiMinorAxis / Engine.SCALE, 
-                (float)moonZeroConic.ArgumentOfPeriapsis);
+            drawBatch.DrawConic(Color.Red, Moon.Conic, DRAW_OFFSET, SCALE);
+            drawBatch.DrawConic(Color.Green, MoonRedux.Conic, DRAW_OFFSET, SCALE);
 
-            drawBatch.FillCircle(new SolidColorBrush(Color.DeepSkyBlue), DrawPos(Earth.Position), Earth.Radius / Engine.SCALE);
-            drawBatch.FillCircle(new SolidColorBrush(Color.WhiteSmoke), DrawPos(Moon.Position), Math.Max(Moon.Radius / Engine.SCALE, 1));
-
-            drawBatch.FillCircle(new SolidColorBrush(Color.YellowGreen), DrawPos(mzr), Moon.Radius / Engine.SCALE);
+            drawBatch.DrawBody(Color.Red, Moon, DRAW_OFFSET, SCALE);
+            drawBatch.DrawBody(Color.Green, MoonRedux, DRAW_OFFSET, SCALE);
+            drawBatch.DrawBody(Color.SkyBlue, Earth, DRAW_OFFSET, SCALE);
 
             drawBatch.End();
 
@@ -153,9 +136,30 @@ namespace Orbits
             return new Vector2((float)(ca * v.X - sa * v.Y), (float)(sa * v.X + ca * v.Y));
         }
 
-        public Vector2 DrawPos(Vector2 Position)
+        public Vector2 DrawPos(Vector3 Position)
         {
             return new Vector2(graphics.PreferredBackBufferWidth/2 + Position.X / Engine.SCALE, graphics.PreferredBackBufferHeight/2 + Position.Y / Engine.SCALE);
+        }
+    }
+
+    public static class DrawBatchExtensions
+    {
+        public static void DrawConic(this DrawBatch drawBatch, Color color, Conic path, Vector2 offset, int scale = 0)
+        {
+            var angle = Math.Cos(path.Inclination) * path.ArgumentOfPeriapsis; //Might need to change
+            var ellipseOffset = new Vector2((float)(path.FociToCenter * Math.Cos(angle)), (float)(path.FociToCenter * Math.Sin(angle)));
+            var focus = (path.PrimeFocus.Position - ellipseOffset) / scale;
+
+            drawBatch.DrawEllipse(new Pen(new SolidColorBrush(color)),
+                focus + offset,
+                (float)path.SemiMajorAxis / Engine.SCALE,
+                (float)path.SemiMinorAxis / Engine.SCALE,
+                (float)angle);
+        }
+
+        public static void DrawBody(this DrawBatch drawBatch, Color color, Body body, Vector2 offset, int scale = 0)
+        {
+            drawBatch.FillCircle(new SolidColorBrush(color), (body.Position / scale) + offset, body.Radius / Engine.SCALE);
         }
     }
 }
