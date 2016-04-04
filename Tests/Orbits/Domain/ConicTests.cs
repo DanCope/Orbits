@@ -16,7 +16,7 @@ namespace Tests.Orbits.Domain
         [TestInitialize]
         public void Setup()
         {
-            Terra = new Body("Terra", 5.972e24F, 5e6F);
+            Terra = new StationaryBody("Terra", 5.972e24F, 5e6F, new TimeSpan(23, 56, 4));
 
             //Cicular = new Conic(Earth.Radius + 45e6F, 0, 0, 0, 0, 0, Earth);
             //Elliptical = new Conic(Earth.Radius + 45e6F, 0.2f, 0, 0, 0, 0, Earth);
@@ -89,8 +89,8 @@ namespace Tests.Orbits.Domain
             var Elliptical = new Conic(Terra.Radius + 45e6F, 0.2d, 0, 0, 0, 0, Terra); //50,000km orbit
             var accuracy = 1e-6d;
 
-            Assert.AreEqual(Elliptical.Apoapsis, 60e6F);
-            Assert.AreEqual(Elliptical.Periapsis, 40e6F);
+            Assert.AreEqual(Elliptical.Apoapsis, 60e6F, accuracy);
+            Assert.AreEqual(Elliptical.Periapsis, 40e6F, accuracy);
         }
 
         [TestMethod]
@@ -117,7 +117,7 @@ namespace Tests.Orbits.Domain
         {
             var accuracy = 1e-2d;
             Vector3 r, v;
-            var Moon = new Body("Moon", 7.35e22F, 3626000, Terra, new Vector2(0, -376671000), new Vector2(800, 0));
+            var Moon = new Body("Moon", 7.35e22F, 3626000, new TimeSpan(27, 7, 43, 14), Terra, new Vector2(0, -376671000), new Vector2(800, 0));
             Moon.Conic.ToCartesian(0, out r, out v);
             //var MoonRedux = new Body("Moon", 7.35e22F, 3626000, Terra, new Vector2(r.X, r.Y), new Vector2(v.X, v.Y));
             //MoonRedux.Conic.ToCartesian(0, out r, out v);

@@ -11,14 +11,13 @@ namespace Orbits.Domain
     {
         private Conic _conic;
         public override Conic Conic { get { return _conic; } }
-        public ConicBody(string name, float mass, float radius, Body parent, Conic conic) 
-            : base(name, mass, radius)
+        public ConicBody(string name, float mass, float radius, TimeSpan rotationPeriod, Body parent, Conic conic) 
+            : base(name, mass, radius, rotationPeriod, parent, new Vector2(), new Vector2())
         {
             _conic = conic;
-            Parent = parent;
         }
 
-        public override void Step(float T, float dT)
+        protected override void DoMovement(float T, float dT)
         {
             Vector3 r, v;
             Conic.ToCartesian(T, out r, out v);
@@ -29,9 +28,6 @@ namespace Orbits.Domain
 
             this.Position = new Vector2(r.X, r.Y);
             this.Velocity = new Vector2(v.X, v.Y);
-
-
-            //TODO: Body Rotation
         }
     }
 }

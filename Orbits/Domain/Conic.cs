@@ -115,12 +115,12 @@ namespace Orbits.Domain
             return SemiMajorAxis * (1 - Eccentricity * Math.Cos(Edt));
         }
 
-        private void FromCartesian(Vector3 r, Vector3 v, float U)
+        private void FromCartesian(Vector3 r, Vector3 v, double U)
         {
             //Orbital Momentum vector
             var h = Vector3.Cross(r, v);
             //Eccentricity vector
-            var e = (Vector3.Cross(v, h) / U) - (r / r.Length());
+            var e = (Vector3.Cross(v, h) / (float)U) - (r / r.Length());
 
             //Node vector
             var n = new Vector3(-h.Y, h.X, 0);

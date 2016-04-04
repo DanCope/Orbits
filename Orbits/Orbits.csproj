@@ -19,7 +19,7 @@
     <SccProvider>SAK</SccProvider>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -44,6 +44,8 @@
     <Compile Include="Domain\Body.cs" />
     <Compile Include="Domain\Conic.cs" />
     <Compile Include="Domain\ConicBody.cs" />
+    <Compile Include="Domain\SolarSystem.cs" />
+    <Compile Include="Domain\StationaryBody.cs" />
     <Compile Include="Engine.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

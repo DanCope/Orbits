@@ -14,29 +14,14 @@ namespace Orbits.Domain
         public string Name { get; set; }
         public float Mass { get; set; }
         public float Radius { get; set; }
+        public TimeSpan RotationPeriod { get; set; }
 
         public Body Parent { get; set; }
         public virtual Conic Conic { get { return new Conic(Position, Velocity, Parent); } }
         public Vector2 Position { get; set; }
         public Vector2 Velocity { get; set; }
         public Vector2 Acceleration { get; private set; }
-
-        
-        /// <summary>
-        /// Define a stationary body.
-        /// </summary>
-        /// <param name="name">String identifier</param>
-        /// <param name="mass">Measured in kg</param>
-        /// <param name="radius">Measured in m</param>
-        public Body(string name, float mass, float radius)
-        {
-            Name = name;
-            Mass = mass;
-            Radius = radius;
-
-            Parent = null;
-            Position = Velocity = new Vector2();
-        }
+        public double Rotation { get; set; }
 
         /// <summary>
         /// Define an orbitting body
@@ -47,15 +32,17 @@ namespace Orbits.Domain
         /// <param name="parent">Parent body which this body will orbit</param>
         /// <param name="position">Starting position, measured in m from system origin</param>
         /// <param name="velocity">Starting velocity, measure in m/s</param>
-        public Body(string name, float mass, float radius, Body parent, Vector2 position, Vector2 velocity)
+        public Body(string name, float mass, float radius, TimeSpan rotationPeriod, Body parent, Vector2 position, Vector2 velocity)
         {
             Name = name;
             Mass = mass;
             Radius = radius;
+            RotationPeriod = rotationPeriod;
 
             Parent = parent;
             Position = position;
             Velocity = velocity;
+            Rotation = 0;
         }
 
         public Vector2 Force(Body OpBody)
@@ -70,7 +57,14 @@ namespace Orbits.Domain
             return force * r / r.Length();
         }
 
-        public virtual void Step(float T, float dT)
+        public void Step(float T, float dT)
+        {
+            DoMovement(T, dT);
+
+            DoRotation(T, dT);
+        }
+
+        protected virtual void DoMovement(float T, float dT)
         {
             //Using the LeapFrog algorithm
             //Orbit logic
@@ -82,8 +76,12 @@ namespace Orbits.Domain
             Acceleration = force / Mass; // + Thrust
 
             Velocity += Acceleration * (dT / 2);
+        }
 
-            //TODO: Body rotation
+        protected virtual void DoRotation(float T, float dT)
+        {
+            var rotationCompletion = (T % RotationPeriod.TotalSeconds) / RotationPeriod.TotalSeconds;
+            Rotation = (2 * Math.PI) * rotationCompletion;
         }
     }
 }
