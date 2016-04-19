@@ -1,5 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Orbits.Domain
 {
@@ -7,21 +9,28 @@ namespace Orbits.Domain
     {
         //Gravitational constant
         private const float G = 6.67408e-11F;
-
         //Standard gravitational parameter
-        public float GM {  get { return G * Mass; } }
+        public float GM { get { return G * Mass; } }
 
+        //Basic
         public string Name { get; set; }
         public float Mass { get; set; }
         public float Radius { get; set; }
         public TimeSpan RotationPeriod { get; set; }
 
+        //Reference
         public Body Parent { get; set; }
+        public IList<Body> Sattelites { get; protected set;}
+
         public virtual Conic Conic { get { return new Conic(Position, Velocity, Parent); } }
+
+        //State
         public Vector2 Position { get; set; }
         public Vector2 Velocity { get; set; }
         public Vector2 Acceleration { get; private set; }
         public double Rotation { get; set; }
+
+        public Vector2 SystemPosition { get { return Parent != null ? Position + Parent.SystemPosition : Position; }  }
 
         /// <summary>
         /// Define an orbitting body
@@ -38,23 +47,25 @@ namespace Orbits.Domain
             Mass = mass;
             Radius = radius;
             RotationPeriod = rotationPeriod;
-
-            Parent = parent;
+            
             Position = position;
             Velocity = velocity;
             Rotation = 0;
+
+            parent?.AddOrbitter(this);
+
+            Sattelites = new List<Body>();
         }
 
-        public Vector2 Force(Body OpBody)
+        public void AddOrbitter(Body sattelite)
         {
-            return Force(OpBody.Position, OpBody.Mass);
+            sattelite.Parent = this;
+            Sattelites.Add(sattelite);
         }
 
-        public Vector2 Force(Vector2 OpPostion, float OpMass)
+        public IEnumerable<Body> GetAllOrbits()
         {
-            Vector2 r = (OpPostion - Position);
-            var force = G * OpMass * Mass / r.LengthSquared();
-            return force * r / r.Length();
+            return Sattelites.SelectMany(s => s.GetAllOrbits()).Union(Sattelites);
         }
 
         public void Step(float T, float dT)
@@ -62,6 +73,8 @@ namespace Orbits.Domain
             DoMovement(T, dT);
 
             DoRotation(T, dT);
+
+            foreach(var body in Sattelites) body.Step(T, dT);
         }
 
         protected virtual void DoMovement(float T, float dT)
@@ -76,6 +89,18 @@ namespace Orbits.Domain
             Acceleration = force / Mass; // + Thrust
 
             Velocity += Acceleration * (dT / 2);
+        }
+
+        private Vector2 Force(Body OpBody)
+        {
+            return Force(OpBody.Position, OpBody.Mass);
+        }
+
+        private Vector2 Force(Vector2 OpPostion, float OpMass)
+        {
+            Vector2 r = (OpPostion - Position);
+            var force = G * OpMass * Mass / r.LengthSquared();
+            return force * r / r.Length();
         }
 
         protected virtual void DoRotation(float T, float dT)

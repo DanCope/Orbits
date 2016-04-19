@@ -47,6 +47,7 @@
     <Compile Include="Domain\SolarSystem.cs" />
     <Compile Include="Domain\StationaryBody.cs" />
     <Compile Include="Engine.cs" />
+    <Compile Include="Extensions\DrawBatchExtensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

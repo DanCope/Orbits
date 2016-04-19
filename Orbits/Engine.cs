@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Orbits.Domain;
+using Orbits.Extensions;
 using System;
 
 namespace Orbits
@@ -20,10 +21,9 @@ namespace Orbits
         SpriteBatch spriteBatch;
         DrawBatch drawBatch;
 
-        //private Texture2D background;
-
-        public StationaryBody Earth = new StationaryBody("Earth", 5.972e24F, 6371000, new TimeSpan(23, 56, 4));
-        public Body Moon;
+        public Body System;
+        public Body Selected;
+        public Body Highlighted;
 
         public Engine()
         {
@@ -46,8 +46,12 @@ namespace Orbits
 
             DRAW_OFFSET = new Vector2(graphics.PreferredBackBufferWidth / 2, graphics.PreferredBackBufferHeight / 2);
 
-            Moon = new ConicBody("Moon", 7.35e22F, 3626000, new TimeSpan(27, 7, 43, 14), Earth,
-                new Conic(384400000, 0.0554, 5.527, 0 /*2.1830*/, 0/*0.0901*/, 2.3609, Earth));
+            var Sun = new StationaryBody("Sun", 1.988e30F, 696.342e6F, new TimeSpan(25, 1, 12, 0));
+            var Earth = new ConicBody("Earth", 5.972e24F, 6.371e6F, new TimeSpan(23, 56, 4), 149.60e9, 0.0167, 102.94719, 100.46435, Sun);
+            var Moon = new ConicBody("Moon", 7.35e22F, 1.737e6F, new TimeSpan(27, 7, 43, 14), 3.844e8, 0.0554, 5.527, 2.3609, Earth);
+
+            System = Sun;
+            Selected = Earth;
 
             base.Initialize();
         }
@@ -89,8 +93,7 @@ namespace Orbits
             var dT = (float)gameTime.ElapsedGameTime.TotalSeconds * SPEED;
             var T = (float)gameTime.TotalGameTime.TotalSeconds * SPEED;
 
-            Earth.Step(T, dT);
-            Moon.Step(T, dT);
+            System.Step(T, dT);
 
             base.Update(gameTime);
         }
@@ -111,11 +114,16 @@ namespace Orbits
 
             drawBatch.Begin(DrawSortMode.Deferred);
 
-            drawBatch.DrawConic(Color.Red, Moon.Conic, DRAW_OFFSET, SCALE);
+            var selectedOffset = DRAW_OFFSET - (Selected.SystemPosition / SCALE);
 
-            drawBatch.DrawBody(Color.Red, Moon, DRAW_OFFSET, SCALE);
-            drawBatch.DrawBody(Color.SkyBlue, Earth, DRAW_OFFSET, SCALE);
+            drawBatch.DrawBody(Color.SkyBlue, System, selectedOffset, SCALE);
+            foreach (var s in System.GetAllOrbits())
+            {
+                drawBatch.DrawConic(Color.LightGray, s.Conic, selectedOffset, SCALE);
+                drawBatch.DrawBody(Color.Red, s, selectedOffset, SCALE);
+            }
 
+            drawBatch.DrawCursor();
             drawBatch.End();
 
             base.Draw(gameTime);
@@ -127,47 +135,15 @@ namespace Orbits
             var sa = Math.Sin(radians);
             return new Vector2((float)(ca * v.X - sa * v.Y), (float)(sa * v.X + ca * v.Y));
         }
-
-        public Vector2 DrawPos(Vector3 Position)
-        {
-            return new Vector2(graphics.PreferredBackBufferWidth / 2 + Position.X / Engine.SCALE, graphics.PreferredBackBufferHeight / 2 + Position.Y / Engine.SCALE);
-        }
     }
 
-    public static class DrawBatchExtensions
-    {
-        public static void DrawConic(this DrawBatch drawBatch, Color color, Conic path, Vector2 offset, int scale = 0)
-        {
-            var angle = Math.Cos(path.Inclination) * path.ArgumentOfPeriapsis; //Might need to change
-            var ellipseOffset = new Vector2((float)(path.FociToCenter * Math.Cos(angle)), (float)(path.FociToCenter * Math.Sin(angle)));
-            var focus = (path.PrimeFocus.Position - ellipseOffset) / scale;
-
-            drawBatch.DrawPrimitiveEllipse(new Pen(new SolidColorBrush(color)),
-                focus + offset,
-                (float)path.SemiMajorAxis / Engine.SCALE,
-                (float)path.SemiMinorAxis / Engine.SCALE,
-                (float)angle);
-        }
-
-        public static void DrawBody(this DrawBatch drawBatch, Color color, Body body, Vector2 offset, int scale = 0)
-        {
-            //TODO : Check body is actually on screen
-            var drawPosition = (body.Position / scale) + offset;
-            var drawRadius = body.Radius / Engine.SCALE;
-            var drawEdgePosition = new Vector2(
-                (float)(drawPosition.X + drawRadius * Math.Cos(body.Rotation)),
-                (float)(drawPosition.Y + drawRadius * Math.Sin(body.Rotation)));
-
-            drawBatch.FillCircle(new SolidColorBrush(color), drawPosition, (float)drawRadius);
-            drawBatch.DrawPrimitiveLine(new Pen(new SolidColorBrush(Color.HotPink)), drawPosition, drawEdgePosition);
-        }
-    }
+    
 }
 
 
    /*
     * TODO:
-    * Mouse Cursor
+    * DONE - Mouse Cursor
     * Selecting planets/Lock on
     * Zooming
     * Cycling between planets
